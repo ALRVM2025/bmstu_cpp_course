@@ -136,3 +136,5 @@ class stack
 	size_t size_;
 };
 }  // namespace bmstu
+
+/// Hello
