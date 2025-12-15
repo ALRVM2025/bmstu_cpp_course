@@ -121,7 +121,7 @@ class stack
 		}
 		return data_[size_ - 1];
 	}
-
+	//: LFK:NFLNF:WENE:NF
 	const T& top() const
 	{
 		if (empty())
