@@ -200,7 +200,7 @@ class simple_basic_string
 
 		return *this;
 	}
-
+	// OIGHSE:HGS:HEOG:OOHG
 	T& operator[](size_t index) noexcept { return *(ptr_ + index); }
 
 	T& at(size_t index)
