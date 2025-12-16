@@ -210,7 +210,7 @@ class simple_basic_string
 			throw std::out_of_range("Wrong index");
 		}
 		return ptr_[index];
-	}
+	}  //
 
 	T* data() { return ptr_; }
 
