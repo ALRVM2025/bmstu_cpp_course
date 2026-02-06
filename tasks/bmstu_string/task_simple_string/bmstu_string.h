@@ -170,8 +170,6 @@ class simple_basic_string
 		obj.ptr_ = new_ptr;
 		obj.size_ = i;
 
-		is.putback(ch);
-
 		return is;
 	}
 
@@ -210,7 +208,7 @@ class simple_basic_string
 			throw std::out_of_range("Wrong index");
 		}
 		return ptr_[index];
-	}  //
+	}  // sdfsdf
 
 	T* data() { return ptr_; }
 
