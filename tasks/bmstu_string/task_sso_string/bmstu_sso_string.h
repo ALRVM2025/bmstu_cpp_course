@@ -96,7 +96,7 @@ class basic_string
 	basic_string()
 	{
 		is_long_ = false;
-		data_.short_str.buffer[0] = T(0);
+		data_.short_str.buffer[0] = T('\0');
 		data_.short_str.size = 0;
 	}
 
@@ -113,7 +113,7 @@ class basic_string
 			{
 				data_.long_str.ptr[i] = T(' ');
 			}
-			data_.long_str.ptr[size] = T(0);
+			data_.long_str.ptr[size] = T('\0');
 		}
 		else
 		{
@@ -123,7 +123,7 @@ class basic_string
 			{
 				data_.short_str.buffer[i] = T(' ');
 			}
-			data_.short_str.buffer[size] = T(0);
+			data_.short_str.buffer[size] = T('\0');
 		}
 	}
 
@@ -148,7 +148,7 @@ class basic_string
 			get_ptr()[i] = value;
 			i++;
 		}
-		get_ptr()[size] = T(0);
+		get_ptr()[size] = T('\0');
 	}
 
 	basic_string(const T* c_str)
@@ -168,11 +168,8 @@ class basic_string
 			data_.short_str.size = len;
 		}
 
-		for (size_t i = 0; i < len; i++)
-		{
-			get_ptr()[i] = c_str[i];
-		}
-		get_ptr()[len] = T(0);
+		std::copy(c_str, c_str + len, get_ptr());
+		get_ptr()[len] = T('\0');
 	}
 
 	basic_string(const basic_string& other)
@@ -189,10 +186,10 @@ class basic_string
 			data_.short_str.size = other.data_.short_str.size;
 		}
 
-		for (size_t i = 0; i <= other.size(); i++)
-		{
-			get_ptr()[i] = other.get_ptr()[i];
-		}
+		std::copy(other.get_ptr(), other.get_ptr() + other.get_size(),
+				  get_ptr());
+
+		get_ptr()[get_size()] = T('\0');
 	}
 
 	basic_string(basic_string&& dying) noexcept
@@ -201,22 +198,15 @@ class basic_string
 
 		if (is_long_)
 		{
-			data_.long_str.size = dying.data_.long_str.size;
-			data_.long_str.capacity = dying.data_.long_str.capacity;
-			data_.long_str.ptr = dying.data_.long_str.ptr;
-			dying.data_.long_str.ptr = nullptr;
-			dying.is_long_ = false;
+			std::swap(data_.long_str.size, dying.data_.long_str.size);
+			std::swap(data_.long_str.capacity, dying.data_.long_str.capacity);
+			std::swap(data_.long_str.ptr, dying.data_.long_str.ptr);
 		}
 
 		else
 		{
-			data_.short_str.size = dying.data_.short_str.size;
-			for (size_t i = 0; i <= data_.short_str.size; i++)
-			{
-				data_.short_str.buffer[i] = dying.data_.short_str.buffer[i];
-			}
-			dying.data_.short_str.buffer[0] = T(0);
-			dying.data_.short_str.size = 0;
+			std::swap(data_.short_str.size, dying.data_.short_str.size);
+			std::swap(data_.short_str.buffer, dying.data_.short_str.buffer);
 		}
 	}
 
@@ -233,25 +223,19 @@ class basic_string
 	basic_string& operator=(basic_string&& other) noexcept
 	{
 		clean_();
+		is_long_ = other.is_long_;
 
 		if (other.is_long_)
 		{
-			data_.long_str.size = other.data_.long_str.size;
-			data_.long_str.capacity = other.data_.long_str.capacity;
-			data_.long_str.ptr = other.data_.long_str.ptr;
-			other.data_.long_str.ptr = nullptr;
-			other.data_.long_str.size = 0;
+			std::swap(data_.long_str.size, other.data_.long_str.size);
+			std::swap(data_.long_str.capacity, other.data_.long_str.capacity);
+			std::swap(data_.long_str.ptr, other.data_.long_str.ptr);
 		}
 
 		else
 		{
-			data_.short_str.size = other.data_.short_str.size;
-			for (size_t i = 0; i <= data_.short_str.size; i++)
-			{
-				get_ptr()[i] = other.get_ptr()[i];
-			}
-			other.data_.short_str.buffer[0] = T(0);
-			other.data_.short_str.size = 0;
+			std::swap(data_.short_str.buffer, other.data_.short_str.buffer);
+			std::swap(data_.short_str.size, other.data_.short_str.size);
 		}
 
 		return *this;
@@ -276,12 +260,9 @@ class basic_string
 			data_.short_str.size = len;
 		}
 
-		for (size_t i = 0; i < len; i++)
-		{
-			get_ptr()[i] = c_str[i];
-		}
+		std::copy(c_str, c_str + len, get_ptr());
 
-		get_ptr()[len] = T(0);
+		get_ptr()[get_size()] = T('\0');
 
 		return *this;
 	}
@@ -304,10 +285,8 @@ class basic_string
 			data_.short_str.size = other.data_.short_str.size;
 		}
 
-		for (size_t i = 0; i <= other.size(); i++)
-		{
-			get_ptr()[i] = other.get_ptr()[i];
-		}
+		std::copy(other.get_ptr(), other.get_ptr() + get_size(), get_ptr());
+		get_ptr()[get_size()] = T('\0');
 
 		return *this;
 	}
@@ -315,11 +294,33 @@ class basic_string
 	friend basic_string<T> operator+(const basic_string<T>& left,
 									 const basic_string<T>& right)
 	{
-		basic_string new_string = basic_string(left);
+		basic_string<T> result;
 
-		new_string += right;
+		size_t left_size = left.get_size();
+		size_t right_size = right.get_size();
+		size_t total_size = left_size + right_size;
 
-		return new_string;
+		if (total_size > SSO_CAPACITY)
+		{
+			result.is_long_ = true;
+			result.data_.long_str.size = total_size;
+			result.data_.long_str.capacity = total_size * 2;
+			result.data_.long_str.ptr = new T[result.data_.long_str.capacity];
+		}
+
+		else
+		{
+			result.is_long_ = false;
+			result.data_.short_str.size = total_size;
+		}
+
+		std::copy(left.get_ptr(), left.get_ptr() + left.get_size(),
+				  result.get_ptr());
+		std::copy(right.get_ptr(), right.get_ptr() + right.get_size(),
+				  result.get_ptr() + left.get_size());
+
+		result.get_ptr()[total_size] = T('\0');
+		return result;
 	}
 
 	template <typename S>
@@ -346,22 +347,26 @@ class basic_string
 
 		if (new_size > get_capacity())
 		{
-			T* new_ptr = new T[new_size + 1];
-			for (size_t i = 0; i < size(); i++)
-			{
-				new_ptr[i] = get_ptr()[i];
-			}
+			T* new_ptr = new T[new_size * 2];
+			std::copy(get_ptr(), get_ptr() + size(), new_ptr);
+
 			clean_();
 			data_.long_str.ptr = new_ptr;
 			data_.long_str.capacity = new_size * 2;
 			data_.long_str.size = new_size;
 			is_long_ = true;
+
+			std::copy(other.get_ptr(), other.get_ptr() + other.get_size(),
+					  get_ptr() + size());
 		}
 
-		for (size_t i = 0; i <= other.size(); i++)
+		else
 		{
-			get_ptr()[new_size - other.size() + i] = other.get_ptr()[i];
+			std::copy(other.get_ptr(), other.get_ptr() + other.size(),
+					  get_ptr() + size());
+			data_.short_str.size = new_size;
 		}
+		get_ptr()[new_size] = T('\0');
 
 		return *this;
 	}
@@ -373,19 +378,15 @@ class basic_string
 		if (size() + 1 > get_capacity())
 		{
 			T* new_ptr = new T[new_size + 1];
-			for (size_t i = 0; i < size(); i++)
-			{
-				new_ptr[i] = get_ptr()[i];
-			}
+			std::copy(get_ptr(), get_ptr() + size(), new_ptr);
 			clean_();
 			data_.long_str.ptr = new_ptr;
-			new_ptr = nullptr;
 			data_.long_str.capacity = new_size * 2;
 			is_long_ = true;
 		}
 
 		get_ptr()[new_size - 1] = symbol;
-		get_ptr()[new_size] = T(0);
+		get_ptr()[new_size] = T('\0');
 
 		if (is_long())
 		{
@@ -420,7 +421,7 @@ class basic_string
 			return 0;
 		}
 		int c = 0;
-		while (*str != T(0))
+		while (*str != T('\0'))
 		{
 			++str;
 			c++;
@@ -440,7 +441,7 @@ class basic_string
 		else
 		{
 			data_.short_str.size = 0;
-			data_.short_str.buffer[0] = T(0);
+			data_.short_str.buffer[0] = T('\0');
 		}
 	}
 };

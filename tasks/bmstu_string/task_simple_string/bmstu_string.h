@@ -72,8 +72,6 @@ class simple_basic_string
 	/// Перемещающий конструктор
 	simple_basic_string(simple_basic_string&& other)
 	{
-		delete[] ptr_;
-
 		ptr_ = other.ptr_;
 		size_ = other.size_;
 
@@ -227,6 +225,6 @@ class simple_basic_string
 	void clean_() {}
 
 	T* ptr_ = nullptr;
-	size_t size_;
+	size_t size_ = 0;
 };
 }  // namespace bmstu
