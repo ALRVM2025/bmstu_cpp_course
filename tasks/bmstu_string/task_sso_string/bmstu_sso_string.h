@@ -198,16 +198,19 @@ class basic_string
 
 		if (is_long_)
 		{
-			std::swap(data_.long_str.size, dying.data_.long_str.size);
-			std::swap(data_.long_str.capacity, dying.data_.long_str.capacity);
-			std::swap(data_.long_str.ptr, dying.data_.long_str.ptr);
+			data_.long_str = dying.data_.long_str;
+			dying.data_.long_str.ptr = nullptr;
+			dying.data_.long_str.size = 0;
+			dying.data_.long_str.capacity = 0;
 		}
 
 		else
 		{
-			std::swap(data_.short_str.size, dying.data_.short_str.size);
-			std::swap(data_.short_str.buffer, dying.data_.short_str.buffer);
+			data_.short_str = dying.data_.short_str;
 		}
+		dying.is_long_ = false;
+		dying.data_.short_str.size = 0;
+		dying.data_.short_str.buffer[0] = T('\0');
 	}
 
 	~basic_string() { clean_(); }

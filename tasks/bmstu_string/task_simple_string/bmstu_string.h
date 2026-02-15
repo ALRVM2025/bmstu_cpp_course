@@ -91,7 +91,7 @@ class simple_basic_string
 	/// Оператор перемещающего присваивания
 	simple_basic_string& operator=(simple_basic_string&& other)
 	{
-		delete[] ptr_;
+		clean_();
 
 		// copy and swap
 		ptr_ = other.ptr_;
@@ -115,6 +115,7 @@ class simple_basic_string
 	/// Оператор копирующего присваивания
 	simple_basic_string& operator=(const simple_basic_string& other)
 	{
+		clean_();
 		ptr_ = new T[other.size() + 1];
 		size_ = other.size_;
 		ptr_[size_] = T(0);
