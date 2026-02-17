@@ -194,23 +194,13 @@ class basic_string
 
 	basic_string(basic_string&& dying) noexcept
 	{
-		is_long_ = dying.is_long_;
+		is_long_ = false;
 
-		if (is_long_)
-		{
-			data_.long_str = dying.data_.long_str;
-			dying.data_.long_str.ptr = nullptr;
-			dying.data_.long_str.size = 0;
-			dying.data_.long_str.capacity = 0;
-		}
+		data_.short_str.size = 0;
+		data_.short_str.buffer[0] = T('\0');
 
-		else
-		{
-			data_.short_str = dying.data_.short_str;
-		}
-		dying.is_long_ = false;
-		dying.data_.short_str.size = 0;
-		dying.data_.short_str.buffer[0] = T('\0');
+		std::swap(is_long_, dying.is_long_);
+		std::swap(data_, dying.data_);
 	}
 
 	~basic_string() { clean_(); }
@@ -230,15 +220,12 @@ class basic_string
 
 		if (other.is_long_)
 		{
-			std::swap(data_.long_str.size, other.data_.long_str.size);
-			std::swap(data_.long_str.capacity, other.data_.long_str.capacity);
-			std::swap(data_.long_str.ptr, other.data_.long_str.ptr);
+			std::swap(data_.long_str, other.data_.long_str);
 		}
 
 		else
 		{
-			std::swap(data_.short_str.buffer, other.data_.short_str.buffer);
-			std::swap(data_.short_str.size, other.data_.short_str.size);
+			std::swap(data_.short_str, other.data_.short_str);
 		}
 
 		return *this;
