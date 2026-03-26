@@ -184,6 +184,10 @@ class basic_string
 		else
 		{
 			data_.short_str.size = other.data_.short_str.size;
+			for (int i = 0; i < data_.short_str.size; i++)
+			{
+				data_.short_str.buffer[i] = other.data_.short_str.buffer[i];
+			}
 		}
 
 		std::copy(other.get_ptr(), other.get_ptr() + other.get_size(),
