@@ -452,7 +452,7 @@ TEST(SimpleVector, PushBackCopyMove)
 
 	v.push_back(original);
 
-	ASSERT_EQ(CopyTracker::copy_count, 2);
+	ASSERT_EQ(CopyTracker::copy_count, 1);
 	ASSERT_GE(CopyTracker::move_count, 0);
 	ASSERT_EQ(v[0].value, 42);
 	ASSERT_EQ(original.value, 42);
@@ -467,7 +467,7 @@ TEST(SimpleVector, PushBackCopyMove2)
 
 	v.push_back(std::move(original));
 
-	ASSERT_EQ(CopyTracker::copy_count, 1);
+	ASSERT_EQ(CopyTracker::copy_count, 0);
 	ASSERT_GE(CopyTracker::move_count, 1);
 	ASSERT_EQ(v[0].value, 42);
 	ASSERT_EQ(original.value, 0);

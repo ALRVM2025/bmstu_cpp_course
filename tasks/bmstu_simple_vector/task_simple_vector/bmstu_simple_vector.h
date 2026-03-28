@@ -16,13 +16,12 @@ class simple_vector
 		using value_type = T;
 		using pointer = T*;
 		using reference = T&;
-		using const_reference = const T&;
 
 		using difference_type = std::ptrdiff_t;
 
 		iterator() = default;
 
-		iterator(const iterator& other) = default;
+		iterator(const iterator& other) : ptr_(other.ptr_){};
 
 		iterator(std::nullptr_t) noexcept : ptr_(nullptr) {}
 
@@ -42,7 +41,11 @@ class simple_vector
 			return it.ptr_;
 		}
 
-		iterator& operator=(const iterator& other) = default;
+		iterator& operator=(const iterator& other)
+		{
+			ptr_ = other.ptr_;
+			return *this;
+		};
 
 		iterator& operator=(iterator&& other) noexcept
 		{
@@ -122,7 +125,7 @@ class simple_vector
 
 		iterator operator-(const difference_type& n) const noexcept
 		{
-			return iterator(ptr_ + n);
+			return iterator(ptr_ - n);
 		}
 
 		iterator& operator-=(const difference_type& n) noexcept
@@ -144,7 +147,7 @@ class simple_vector
 
 	simple_vector() noexcept = default;
 
-	~simple_vector() = default;
+	~simple_vector() { clear(); };
 
 	simple_vector(std::initializer_list<T> init) noexcept
 	{
@@ -152,12 +155,12 @@ class simple_vector
 		capacity_ = init.size();
 		if (size_ > 0)
 		{
-			data_ = array_ptr<T>(size_);
-
+			T* new_ptr = static_cast<T*>(operator new(sizeof(T) * capacity_));
+			data_ = array_ptr<T>(new_ptr);
 			size_t i = 0;
 			for (const auto& item : init)
 			{
-				data_[i] = item;
+				new (&data_[i]) T(item);
 				i++;
 			}
 		}
@@ -169,22 +172,17 @@ class simple_vector
 		capacity_ = other.size_;
 		if (size_ > 0)
 		{
-			data_ = array_ptr<T>(size_);
+			T* new_ptr = static_cast<T*>(operator new(sizeof(T) * capacity_));
+			data_ = array_ptr<T>(new_ptr);
 
 			for (int i = 0; i < size_; i++)
 			{
-				data_[i] = other.data_[i];
+				new (&data_[i]) T(other.data_[i]);
 			}
 		}
 	}
 
-	simple_vector(simple_vector&& other) noexcept
-	{
-		data_ = array_ptr<T>(nullptr);
-		size_ = 0;
-		capacity_ = 0;
-		swap(other);
-	}
+	simple_vector(simple_vector&& other) noexcept { swap(other); }
 
 	simple_vector& operator=(const simple_vector& other)
 	{
@@ -198,12 +196,15 @@ class simple_vector
 
 	simple_vector(size_t size, const T& value = T{})
 	{
-		data_ = array_ptr<T>(size);
 		size_ = size;
 		capacity_ = size_;
-		for (size_t i = 0; i < size; i++)
+
+		T* new_data = static_cast<T*>(operator new(sizeof(T) * (size_)));
+		data_ = array_ptr<T>(new_data);
+
+		for (int i = 0; i < size; ++i)
 		{
-			data_[i] = value;
+			new (&data_[i]) T(value);
 		}
 	}
 
@@ -228,10 +229,9 @@ class simple_vector
 		return data_[index];
 	}
 
-	typename const_iterator::const_reference operator[](
-		size_t index) const noexcept
+	typename const_iterator::reference operator[](size_t index) const noexcept
 	{
-		return data_[index];
+		return data_.get()[index];
 	}
 
 	typename iterator::reference at(size_t index)
@@ -272,14 +272,15 @@ class simple_vector
 	{
 		if (new_cap > capacity_)
 		{
-			array_ptr<T> new_data_(new_cap);
+			T* new_data = static_cast<T*>(operator new(sizeof(T) * (new_cap)));
 			for (size_t i = 0; i < size_; i++)
 			{
-				new_data_[i] = std::move(data_[i]);
+				new (&new_data[i]) T(std::move(data_[i]));
+				data_[i].~T();
 			}
 
-			data_.swap(new_data_);
 			capacity_ = new_cap;
+			data_ = array_ptr<T>(new_data);
 		}
 	}
 
@@ -397,7 +398,7 @@ class simple_vector
 			reserve(new_cap);
 		}
 
-		data_[size_] = std::move(value);
+		new (data_.get() + size_) T(std::move(value));
 		++size_;
 	}
 
@@ -426,7 +427,7 @@ class simple_vector
 			reserve(new_cap);
 		}
 
-		data_[size_] = value;
+		new (data_.get() + size_) T(value);
 		++size_;
 	}
 
@@ -464,29 +465,14 @@ class simple_vector
 
 	friend auto operator<=>(const simple_vector& lhs, const simple_vector& rhs)
 	{
-		size_t min_size = std::min(lhs.size(), rhs.size());
-
-		for (size_t i = 0; i < min_size; i++)
+		for (size_t i = 0; i < std::min(lhs.size_, rhs.size_); i++)
 		{
-			if (lhs[i] < rhs[i])
+			if (lhs.data_[i] != rhs.data_[i])
 			{
-				return std::strong_ordering::less;
-			}
-			if (rhs[i] < lhs[i])
-			{
-				return std::strong_ordering::greater;
+				return lhs.data_[i] <=> rhs.data_[i];
 			}
 		}
-		if (lhs.size() < rhs.size())
-		{
-			return std::strong_ordering::less;
-		}
-		if (lhs.size() > rhs.size())
-		{
-			return std::strong_ordering::greater;
-		}
-
-		return std::strong_ordering::equal;
+		return lhs.size_ <=> rhs.size_;
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, const simple_vector& vec)
@@ -505,7 +491,6 @@ class simple_vector
 	{
 		size_t index = where - begin();
 
-		data_[index].~T();
 		for (size_t i = index + 1; i < size_; i++)
 		{
 			data_[i - 1] = std::move(data_[i]);
@@ -521,7 +506,14 @@ class simple_vector
 	static bool alphabet_compare(const simple_vector<T>& lhs,
 								 const simple_vector<T>& rhs)
 	{
-		return false;
+		for (size_t i = 0; i < std::min(lhs.size_, rhs.size_); i++)
+		{
+			if (lhs.data_[i] != rhs.data_[i])
+			{
+				return lhs.data_[i] < rhs.data_[i];
+			}
+		}
+		return lhs.size_ < rhs.size_;
 	}
 	array_ptr<T> data_;
 	size_t size_ = 0;
