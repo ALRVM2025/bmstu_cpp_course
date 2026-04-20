@@ -41,6 +41,8 @@ class simple_vector
 			return it.ptr_;
 		}
 
+		reference operator[](difference_type size) { return *(ptr_ + size); }
+
 		iterator& operator=(const iterator& other)
 		{
 			ptr_ = other.ptr_;
@@ -182,7 +184,11 @@ class simple_vector
 		}
 	}
 
-	simple_vector(simple_vector&& other) noexcept { swap(other); }
+	simple_vector(simple_vector&& other) noexcept
+		: data_(nullptr), size_(0), capacity_(0)
+	{
+		swap(other);
+	}
 
 	simple_vector& operator=(const simple_vector& other)
 	{
@@ -382,25 +388,7 @@ class simple_vector
 		return iterator(data_.get() + index);
 	}
 
-	void push_back(T&& value)
-	{
-		if (size_ >= capacity_)
-		{
-			size_t new_cap;
-			if (capacity_ == 0)
-			{
-				new_cap = 1;
-			}
-			else
-			{
-				new_cap = capacity_ * 2;
-			}
-			reserve(new_cap);
-		}
-
-		new (data_.get() + size_) T(std::move(value));
-		++size_;
-	}
+	void push_back(T&& value) { insert(end(), std::move(value)); }
 
 	void clear() noexcept
 	{
@@ -411,36 +399,11 @@ class simple_vector
 		size_ = 0;
 	}
 
-	void push_back(const T& value)
-	{
-		size_t new_cap;
-		if (size_ >= capacity_)
-		{
-			if (capacity_ == 0)
-			{
-				new_cap = 1;
-			}
-			else
-			{
-				new_cap = capacity_ * 2;
-			}
-			reserve(new_cap);
-		}
-
-		new (data_.get() + size_) T(value);
-		++size_;
-	}
+	void push_back(const T& value) { insert(end(), value); }
 
 	bool empty() const noexcept { return size_ == 0; }
 
-	void pop_back()
-	{
-		if (size_ > 0)
-		{
-			data_[size_ - 1].~T();
-			--size_;
-		}
-	}
+	void pop_back() { erase(end() - 1); }
 
 	friend bool operator==(const simple_vector& lhs, const simple_vector& rhs)
 	{

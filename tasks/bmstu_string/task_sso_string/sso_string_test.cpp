@@ -376,3 +376,10 @@ TEST(SSOStringTest, SSOCapacity)
 	ASSERT_FALSE(long_str.is_using_sso());
 	ASSERT_GE(long_str.capacity(), long_str.size());
 }
+
+TEST(SSOStringTest, SSOReversed)
+{
+	bmstu::string short_str("test");
+	short_str.reversed().reversed().reversed();
+	ASSERT_STREQ(short_str.c_str(), "tset");
+}

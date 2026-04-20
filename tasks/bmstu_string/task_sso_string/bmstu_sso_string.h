@@ -220,17 +220,9 @@ class basic_string
 	basic_string& operator=(basic_string&& other) noexcept
 	{
 		clean_();
-		is_long_ = other.is_long_;
+		std::swap(is_long_, other.is_long_);
 
-		if (other.is_long_)
-		{
-			std::swap(data_.long_str, other.data_.long_str);
-		}
-
-		else
-		{
-			std::swap(data_.short_str, other.data_.short_str);
-		}
+		std::swap(data_, other.data_);
 
 		return *this;
 	}
@@ -365,6 +357,16 @@ class basic_string
 		return *this;
 	}
 
+	basic_string& reversed()
+	{
+		for (size_t i = 0; i < get_size() / 2; ++i)
+		{
+			std::swap((*this)[i], (*this)[get_size() - i - 1]);
+		}
+
+		return *this;
+	}
+
 	basic_string& operator+=(T symbol)
 	{
 		size_t new_size = size() + 1;
@@ -394,7 +396,29 @@ class basic_string
 		return *this;
 	}
 
+	friend bool operator==(const basic_string<T>& left,
+						   const basic_string<T> right)
+	{
+		if (left.size() != right.size())
+		{
+			return false;
+		}
+		for (size_t i = 0; i < std::min(left.size(), right.size()); i++)
+		{
+			if (left[i] != right[i])
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
 	T& operator[](size_t index) noexcept { return get_ptr()[index]; }
+
+	const T& operator[](size_t index) const noexcept
+	{
+		return get_ptr()[index];
+	}
 
 	T& at(size_t index)
 	{
