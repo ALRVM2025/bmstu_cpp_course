@@ -204,7 +204,7 @@ class list
 
 	iterator erase(const_iterator& pos)
 	{
-		node* current_node = const_cast<node*>(pos.current);
+		node* current_node = pos.current;
 
 		node* next = current_node->next_node_;
 		node* prev_current = current_node->prev_node_;
@@ -393,6 +393,30 @@ class list
 		++size_;
 
 		return iterator{new_node};
+	}
+
+	void sort()
+	{
+		if (size() <= 1)
+			return;
+
+		for (size_t i = 0; i < size() - 1; i++)
+		{
+			auto it = begin();
+			auto next_it = it;
+
+			next_it++;
+
+			for (size_t j = 0; j < size() - 1; j++)
+			{
+				if (*it > *next_it)
+				{
+					std::swap(*it, *next_it);
+				}
+				++it;
+				++next_it;
+			}
+		}
 	}
 
    private:

@@ -536,3 +536,47 @@ TEST(BidirectLinkedListTests, from_vector)
 										"string7"s, "end_string"s}),
 			  my_vec);
 }
+
+TEST(SortTest, epmty_list)
+{
+	bmstu::list<int> lst;
+	lst.sort();
+
+	ASSERT_TRUE(lst.empty());
+	ASSERT_EQ(lst.size(), 0u);
+}
+
+TEST(SortTest, single_element)
+{
+	bmstu::list<int> lst;
+	lst.push_back(5);
+	lst.sort();
+
+	ASSERT_EQ(lst.size(), 1u);
+	ASSERT_EQ(lst[0], 5);
+}
+
+TEST(SortTest, two_elements_sorted)
+{
+	bmstu::list<int> lst = {10, 5};
+
+	lst.sort();
+
+	ASSERT_EQ(lst.size(), 2u);
+	ASSERT_EQ(lst[0], 5);
+	ASSERT_EQ(lst[1], 10);
+}
+
+TEST(SortTest, random)
+{
+	bmstu::list<int> lst = {7, 8, 5, 1000, 865, 39879854};
+	bmstu::list<int> lst1 = lst;
+
+	lst1.sort();
+
+	ASSERT_EQ(lst1.size(), 6u);
+	for (size_t i = 0; i < lst1.size() - 1; i++)
+	{
+		ASSERT_TRUE(lst1[i] < lst1[i + 1]);
+	}
+}
