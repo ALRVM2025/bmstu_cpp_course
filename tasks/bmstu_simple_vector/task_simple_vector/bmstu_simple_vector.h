@@ -465,6 +465,25 @@ class simple_vector
 		return iterator(data_.get() + index);
 	}
 
+	friend simple_vector operator+(const simple_vector& other1,
+								   const simple_vector& other2)
+	{
+		auto result = other1.size() + other2.size();
+		simple_vector new_vector;
+
+		for (int i = 0; i < other1.size(); i++)
+		{
+			new_vector.push_back(other1[i]);
+		}
+
+		for (int i = 0; i < other2.size(); i++)
+		{
+			new_vector.push_back(other2[i]);
+		}
+
+		return new_vector;
+	}
+
    private:
 	static bool alphabet_compare(const simple_vector<T>& lhs,
 								 const simple_vector<T>& rhs)
