@@ -407,7 +407,7 @@ class list
 
 			next_it++;
 
-			for (size_t j = 0; j < size() - 1; j++)
+			for (size_t j = 0; j < size() - 1 - i; j++)
 			{
 				if (*it > *next_it)
 				{
@@ -416,6 +416,91 @@ class list
 				++it;
 				++next_it;
 			}
+		}
+	}
+
+	list& reversed()
+	{
+		if (size() <= 1)
+		{
+			return *this;
+		}
+
+		node* current = head_;
+		while (current != nullptr)
+		{
+			std::swap(current->next_node_, current->prev_node_);
+			current = current->prev_node_;
+		}
+
+		std::swap(head_, tail_);
+
+		return *this;
+	}
+
+	void sort_1()
+	{
+		if (size() <= 1)
+			return;
+
+		auto slow = begin();
+		auto fast = begin();
+
+		while (fast != end() && ++fast != end())
+		{
+			++slow;
+			++fast;
+		}
+
+		list<T> left;
+		list<T> right;
+
+		auto it = begin();
+		while (it != slow)
+		{
+			left.push_back(*it);
+			it++;
+		}
+		left.push_back(*slow);
+		++slow;
+		while (slow != end())
+		{
+			right.push_back(*slow);
+			++slow;
+		}
+
+		clear();
+
+		left.sort();
+		right.sort();
+
+		auto lit = left.begin();
+		auto rit = right.begin();
+
+		while (lit != left.end() && rit != right.end())
+		{
+			if (*lit < *rit)
+			{
+				push_back(*lit);
+				++lit;
+			}
+			else
+			{
+				push_back(*rit);
+				++rit;
+			}
+		}
+
+		while (lit != left.end())
+		{
+			push_back(*lit);
+			++lit;
+		}
+
+		while (rit != right.end())
+		{
+			push_back(*rit);
+			++rit;
 		}
 	}
 

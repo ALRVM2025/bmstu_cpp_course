@@ -580,3 +580,17 @@ TEST(SortTest, random)
 		ASSERT_TRUE(lst1[i] < lst1[i + 1]);
 	}
 }
+
+TEST(Reversed, revers)
+{
+	bmstu::list<int> lst = {1, 2, 3, 4, 5};
+	lst.reversed();
+	ASSERT_EQ(lst, (bmstu::list<int>{5, 4, 3, 2, 1}));
+}
+
+TEST(Reversed, revers1)
+{
+	bmstu::list<int> l1 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+	l1.reversed();
+	ASSERT_EQ(l1, (bmstu::list<int>{10, 9, 8, 7, 6, 5, 4, 3, 2, 1}));
+}
