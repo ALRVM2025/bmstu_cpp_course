@@ -488,3 +488,11 @@ TEST(SimpleVector, Summa)
 	bmstu::simple_vector<int> v2 = v + v1;
 	ASSERT_EQ(v2, (bmstu::simple_vector<int>{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}));
 }
+
+TEST(SimpleVector, New_operator)
+{
+	bmstu::simple_vector<int> v = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 100};
+	auto it = v.begin() + 5;
+	ASSERT_EQ(it[0], 6);
+	ASSERT_EQ(it[5], 100);
+}

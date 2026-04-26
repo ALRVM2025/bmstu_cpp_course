@@ -86,6 +86,8 @@ class simple_vector
 			return tmp;
 		}
 
+		reference operator[](int x) { return *(ptr_ + x); }
+
 		explicit operator bool() const { return ptr_ != nullptr; }
 
 		friend bool operator==(const iterator& lhs, const iterator& rhs)
