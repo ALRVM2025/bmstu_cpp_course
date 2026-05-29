@@ -1,9 +1,28 @@
 #include <bmstu_unordered_map.h>
 #include <gtest/gtest.h>
+#include <iostream>
 #include <sstream>
 #include <string>
 
-using namespace std::string_literals;
+TEST(UnorderedMapTests, first)
+{
+	for (int i = 0; i < 100; i++)
+	{
+		// auto hash = bmstu::hash<int>();
+		// std::cout << hash(i) << std::endl;
+	}
+}
+
+TEST(UnorderedMapTests, second)
+{
+	// bmstu::hash<const char*> stringHasher;
+
+	// for (int i = 0; i < 100; i++)
+	//{
+	// auto hash = bmstu::hash<int>();
+	// std::cout << hash(i) << std::endl;
+	//}
+}
 
 TEST(UnorderedMapTests, init)
 {
@@ -25,9 +44,9 @@ TEST(UnorderedMapTests, insert_and_find)
 {
 	bmstu::unordered_map<int, std::string> map;
 
-	map.insert(1, "one");
-	map.insert(2, "two");
-	map.insert(3, "three");
+	map.insert({1, "one"});
+	map.insert({2, "two"});
+	map.insert({3, "three"});
 
 	ASSERT_EQ(map.size(), 3u);
 	ASSERT_FALSE(map.empty());
@@ -70,10 +89,10 @@ TEST(UnorderedMapTests, erase)
 {
 	bmstu::unordered_map<int, std::string> map;
 
-	map.insert(1, "one");
-	map.insert(2, "two");
-	map.insert(3, "three");
-	map.insert(4, "four");
+	map.insert({1, "one"});
+	map.insert({2, "two"});
+	map.insert({3, "three"});
+	map.insert({4, "four"});
 
 	ASSERT_EQ(map.size(), 4u);
 
@@ -148,7 +167,7 @@ TEST(UnorderedMapTests, copy_constructor)
 	ASSERT_EQ(map1[2], "two");
 	ASSERT_EQ(map2[2], "TWO");
 
-	map2.insert(4, "four");
+	map2.insert({4, "four"});
 	ASSERT_EQ(map1.size(), 3u);
 	ASSERT_EQ(map2.size(), 4u);
 }
@@ -254,9 +273,9 @@ TEST(UnorderedMapTests, iteration)
 	}
 	ASSERT_EQ(count, 10);
 
-	const auto& const_map = map;
+	auto& const_map = map;
 	count = 0;
-	for (auto it = const_map.cbegin(); it != const_map.cend(); it++)
+	for (auto it = const_map.begin(); it != const_map.end(); it++)
 	{
 		ASSERT_EQ(it->second, it->first * it->first);
 		++count;
@@ -347,7 +366,7 @@ TEST(UnorderedMapTests, update_value)
 	map[5] = 10;
 	ASSERT_EQ(map[5], 10);
 
-	map.insert(5, 20);
+	map.insert({5, 20});
 	ASSERT_EQ(map[5], 20);
 
 	map[5] = 30;
