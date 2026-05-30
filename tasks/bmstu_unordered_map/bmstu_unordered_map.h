@@ -1,31 +1,92 @@
 #pragma once
+#include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
-#include <initializer_list>
+#include <functional>
+#include <iterator>
 #include <list>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "fast_streebog.h"
 
 namespace bmstu
 {
-template <typename item>
-struct equal_to
+
+namespace detail
 {
-	bool operator()(const item& lhs, const item& rhs) const
-	{
-		return lhs == rhs;
-	}
+
+template <typename T, typename = void>
+struct has_raw_bytes_impl : std::false_type
+{
 };
+
+template <typename T>
+struct has_raw_bytes_impl<
+	T,
+	std::void_t<decltype(std::declval<const T&>().rawBytes())>>
+	: std::is_convertible<decltype(std::declval<const T&>().rawBytes()),
+						  std::span<const uint8_t>>
+{
+};
+
+template <typename T, typename = void>
+struct has_equality_operator_impl : std::false_type
+{
+};
+
+template <typename T>
+struct has_equality_operator_impl<
+	T,
+	std::void_t<decltype(std::declval<const T&>() == std::declval<const T&>())>>
+	: std::is_convertible<decltype(std::declval<const T&>() ==
+								   std::declval<const T&>()),
+						  bool>
+{
+};
+
+}  // namespace detail
+
+template <typename T>
+struct has_raw_bytes : detail::has_raw_bytes_impl<T>
+{
+};
+
+template <typename T>
+inline constexpr bool has_raw_bytes_v = has_raw_bytes<T>::value;
+
+template <typename T>
+struct has_equality_operator : detail::has_equality_operator_impl<T>
+{
+};
+
+template <typename T>
+inline constexpr bool has_equality_operator_v = has_equality_operator<T>::value;
 
 template <typename K>
-struct hash
+struct streebog_hash
 {
-	size_t operator()(const K& key) const
+	static_assert(has_raw_bytes_v<K> || std::is_trivially_copyable_v<K>,
+				  "bmstu::streebog_hash: key type must be trivially-copyable "
+				  "or provide `std::span<const uint8_t> rawBytes() const`.");
+
+	std::size_t operator()(const K& key) const noexcept
 	{
 		uint8_t digest[32];
-		streebog_hash_256(reinterpret_cast<const uint8_t*>(&key), sizeof(K),
-						  digest);
+		if constexpr (has_raw_bytes_v<K>)
+		{
+			auto bytes = key.rawBytes();
+			streebog_hash_256(bytes.data(), bytes.size(), digest);
+		}
+		else
+		{
+			streebog_hash_256(reinterpret_cast<const uint8_t*>(&key), sizeof(K),
+							  digest);
+		}
 		std::size_t result = 0;
 		std::memcpy(&result, digest, sizeof(std::size_t));
 		return result;
@@ -33,59 +94,12 @@ struct hash
 };
 
 template <>
-struct hash<const char*>
+struct streebog_hash<std::string>
 {
-	size_t operator()(const char* str) const
+	std::size_t operator()(const std::string& key) const noexcept
 	{
 		uint8_t digest[32];
-		size_t string_size = strlen(str);
-		streebog_hash_256(reinterpret_cast<const uint8_t*>(str), string_size,
-						  digest);
-		std::size_t result = 0;
-		std::memcpy(&result, digest, sizeof(std::size_t));
-		return result;
-	}
-};
-
-template <>
-struct hash<size_t>
-{
-	size_t operator()(const size_t& key) const { return key; }
-};
-
-template <>
-struct hash<int>
-{
-	size_t operator()(const int& key) const { return static_cast<size_t>(key); }
-};
-
-template <>
-struct hash<char>
-{
-	size_t operator()(const char& key) const
-	{
-		return static_cast<size_t>(key);
-	}
-};
-
-template <>
-struct hash<double>
-{
-	size_t operator()(const double& key) const
-	{
-		size_t result;
-		std::memcpy(&result, &key, sizeof(double));
-		return result;
-	}
-};
-
-template <>
-struct hash<std::string>
-{
-	size_t operator()(const std::string& key) const
-	{
-		uint8_t digest[32];
-		streebog_hash_256(reinterpret_cast<const uint8_t*>(key.c_str()),
+		streebog_hash_256(reinterpret_cast<const uint8_t*>(key.data()),
 						  key.size(), digest);
 		std::size_t result = 0;
 		std::memcpy(&result, digest, sizeof(std::size_t));
@@ -95,10 +109,13 @@ struct hash<std::string>
 
 template <typename K,
 		  typename V,
-		  typename Hash = hash<K>,
-		  typename KeyEqual = equal_to<K>>
+		  typename Hash = streebog_hash<K>,
+		  typename Equal = std::equal_to<K>>
 class unordered_map
 {
+	static_assert(has_equality_operator_v<K>,
+				  "bmstu::unordered_map: key type must provide `operator==`.");
+
    public:
 	using size_type = size_t;
 	using key_type = K;
@@ -118,22 +135,22 @@ class unordered_map
 
 	void rehash(size_t new_bucket_count)
 	{
-		std::vector<bucket_type> next(new_bucket_count);
-		for (auto& bkt : buckets_)
+		std::vector<bucket_type> neww(new_bucket_count);
+		for (auto& buckets : buckets_)
 		{
-			for (auto& pair : bkt)
+			for (auto& pair : buckets)
 			{
 				size_type idx = hash_(pair.first) % new_bucket_count;
-				next[idx].push_back(std::move(pair));
+				neww[idx].push_back(std::move(pair));
 			}
 		}
-		buckets_ = std::move(next);
+		buckets_.swap(neww);
 	}
 
 	std::vector<bucket_type> buckets_;
 	size_type size_;
 	Hash hash_;
-	KeyEqual equal_;
+	Equal equal;
 
    public:
 	explicit unordered_map(size_type bucket_count = DEFAULT_BUCKET_COUNT)
@@ -155,12 +172,13 @@ class unordered_map
 		: buckets_(std::move(other.buckets_)),
 		  size_(other.size_),
 		  hash_(std::move(other.hash_)),
-		  equal_(std::move(other.equal_))
+		  equal(std::move(other.equal))
 	{
 		other.size_ = 0;
 		other.buckets_.clear();
 		other.buckets_.resize(DEFAULT_BUCKET_COUNT);
 	}
+
 	unordered_map& operator=(const unordered_map& other)
 	{
 		if (this != &other)
@@ -169,7 +187,10 @@ class unordered_map
 			swap(temp);
 			return *this;
 		}
+
+		return *this;
 	}
+
 	unordered_map& operator=(unordered_map&&) = default;
 	~unordered_map() = default;
 
@@ -208,51 +229,53 @@ class unordered_map
 			{
 				++bucket_index_;
 				if (bucket_index_ < buckets_ptr_->size())
+				{
 					list_it_ = (*buckets_ptr_)[bucket_index_].begin();
+				}
 			}
+
 			return *this;
 		}
 
 		iterator& operator--() = delete;
+
 		iterator operator++(int)
 		{
-			iterator tmp = *this;
+			iterator temp(*this);
 			++(*this);
-			return tmp;
+			return temp;
 		}
-		iterator operator--(int) = delete;
+
+		iterator& operator--(int) = delete;
 
 		explicit operator bool() const { return buckets_ptr_ != nullptr; }
 
-		bool operator==(const iterator& o) const
+		bool operator==(const iterator& other) const
 		{
 			bool at_end =
 				!buckets_ptr_ || bucket_index_ >= buckets_ptr_->size();
-			bool o_at_end =
-				!o.buckets_ptr_ || o.bucket_index_ >= o.buckets_ptr_->size();
+			bool other_at_end =
+				!other.buckets_ptr_ ||
+				other.bucket_index_ >= other.buckets_ptr_->size();
 
-			if (at_end && o_at_end)
+			if (at_end && other_at_end)
 				return true;
-			if (at_end != o_at_end)
+			if (at_end != other_at_end)
 				return false;
-			return buckets_ptr_ == o.buckets_ptr_ &&
-				   bucket_index_ == o.bucket_index_ && list_it_ == o.list_it_;
+			return buckets_ptr_ == other.buckets_ptr_ &&
+				   bucket_index_ == other.bucket_index_ &&
+				   list_it_ == other.list_it_;
 		}
 
-		bool operator!=(const iterator& o) const { return !(*this == o); }
-
-		iterator& operator=(std::nullptr_t) noexcept
+		bool operator!=(const iterator& other) const
 		{
-			buckets_ptr_ = nullptr;
-			return *this;
+			return !(*this == other);
 		}
 
 	   private:
 		std::vector<bucket_type>* buckets_ptr_ = nullptr;
 		size_type bucket_index_ = 0;
 		typename bucket_type::iterator list_it_;
-
-		friend class unordered_map;
 	};
 
 	class const_iterator
@@ -340,13 +363,14 @@ class unordered_map
 
 	iterator begin()
 	{
-		for (size_t i = 0; i < buckets_.size(); ++i)
+		for (size_t i = 0; i < buckets_.size(); i++)
 		{
 			if (!buckets_[i].empty())
 			{
 				return iterator(&buckets_, i, buckets_[i].begin());
 			}
 		}
+
 		return end();
 	}
 
@@ -354,13 +378,14 @@ class unordered_map
 
 	const_iterator cbegin() const
 	{
-		for (size_t i = 0; i < buckets_.size(); ++i)
+		for (size_t i = 0; i < buckets_.size(); i++)
 		{
 			if (!buckets_[i].empty())
 			{
 				return const_iterator(&buckets_, i, buckets_[i].cbegin());
 			}
 		}
+
 		return cend();
 	}
 
@@ -387,37 +412,38 @@ class unordered_map
 		size_ = 0;
 	}
 
-	void swap(unordered_map& other) noexcept
+	void swap(unordered_map& other)
 	{
 		std::swap(buckets_, other.buckets_);
 		std::swap(size_, other.size_);
 		std::swap(hash_, other.hash_);
-		std::swap(equal_, other.equal_);
 	}
 
 	iterator find(const key_type& key)
 	{
 		size_type idx = bucket_for(key);
-		for (auto it = buckets_[idx].begin(); it != buckets_[idx].end(); ++it)
+		for (auto it = buckets_[idx].begin(); it != buckets_[idx].end(); it++)
 		{
-			if (equal_(it->first, key))
+			if (equal(it->first, key))
 			{
 				return iterator(&buckets_, idx, it);
 			}
 		}
+
 		return end();
 	}
 
 	const_iterator find(const key_type& key) const
 	{
 		size_type idx = bucket_for(key);
-		for (auto it = buckets_[idx].cbegin(); it != buckets_[idx].cend(); ++it)
+		for (auto it = buckets_[idx].begin(); it != buckets_[idx].end(); it++)
 		{
-			if (equal_(it->first, key))
+			if (equal(it->first, key))
 			{
 				return const_iterator(&buckets_, idx, it);
 			}
 		}
+
 		return cend();
 	}
 
@@ -436,35 +462,30 @@ class unordered_map
 	const V& at(const key_type& key) const
 	{
 		auto it = find(key);
-		if (it == cend())
+		if (it == end())
 		{
 			throw std::out_of_range("Key not found");
 		}
 		return it->second;
 	}
 
-	iterator insert(const value_type& value)
+	std::pair<iterator, bool> insert(const value_type& value)
 	{
 		auto it = find(value.first);
 		if (it != end())
 		{
-			it->second = value.second;
-			return it;
+			return {it, false};
 		}
 
 		if (load_factor() > MAX_LOAD_FACTOR)
 		{
 			rehash(bucket_count() * 2);
 		}
+
 		size_type idx = bucket_for(value.first);
 		buckets_[idx].push_front(value);
 		++size_;
-		return iterator(&buckets_, idx, buckets_[idx].begin());
-	}
-
-	iterator insert(const key_type& key, const mapped_type& value)
-	{
-		return insert(value_type(key, value));
+		return {iterator{&buckets_, idx, buckets_[idx].begin()}, true};
 	}
 
 	V& operator[](const key_type& key)
@@ -481,9 +502,11 @@ class unordered_map
 				rehash(bucket_count() * 2);
 			}
 			size_type idx = bucket_for(key);
-			buckets_[idx].emplace_back(key, V());
+			buckets_[idx].push_front({key, V()});
 			++size_;
-			return buckets_[idx].back().second;
+			auto last_it = buckets_[idx].begin();
+
+			return last_it->second;
 		}
 	}
 
@@ -491,18 +514,29 @@ class unordered_map
 	{
 		size_type idx = bucket_for(key);
 		auto& bucket = buckets_[idx];
-		for (auto it = bucket.begin(); it != bucket.end(); ++it)
+		for (auto it = bucket.begin(); it != bucket.end(); it++)
 		{
-			if (equal_(it->first, key))
+			if (equal(it->first, key))
 			{
 				bucket.erase(it);
 				--size_;
 				return true;
 			}
 		}
+
 		return false;
 	}
 
+	void reserve(size_type new_capacity)
+	{
+		size_type min_buckets = static_cast<size_t>(
+			std::ceil(static_cast<double>(new_capacity)) / MAX_LOAD_FACTOR);
+
+		if (min_buckets > bucket_count())
+		{
+			rehash(min_buckets);
+		}
+	}
 	bool operator==(const unordered_map& other) const
 	{
 		if (size_ != other.size_)
