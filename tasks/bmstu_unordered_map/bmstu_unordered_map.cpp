@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <iostream>
 #include <set>
 #include <string>
 #include <vector>
@@ -269,4 +270,51 @@ TEST(UnorderedMapTest, StreebogHashDistribution)
 	double avg =
 		static_cast<double>(m.size()) / static_cast<double>(m.bucket_count());
 	EXPECT_LE(avg, 2.0);
+}
+
+struct Car
+{
+	std::string vin;
+	std::string model;
+	double weight;
+
+	bool operator==(const Car& other) const
+	{
+		return vin == other.vin && model == other.model &&
+			   weight == other.weight;
+	}
+
+	std::vector<uint8_t> rawBytes() const
+	{
+		std::string raw = std::to_string(weight) + vin + model;
+		return std::vector<uint8_t>(raw.begin(), raw.end());
+	}
+};
+
+TEST(MY, first)
+{
+	bmstu::unordered_map<Car, int> my5;
+	bmstu::unordered_map<int, int> my;
+
+	my[1] = 100;
+	my[2] = 200;
+	my[3] = 300;
+
+	my[100000] = 1000;
+
+	for (const auto& [k, v] : my)
+	{
+		std::cout << k << " " << v << std::endl;
+	}
+
+	bmstu::unordered_map<char, int> my1;
+
+	my1['A'] = 1;
+	my1['B'] = 2;
+	my1['C'] = 3;
+
+	for (const auto& [k, v] : my1)
+	{
+		std::cout << k << " " << v << std::endl;
+	}
 }
