@@ -1,8 +1,8 @@
 #include "bmstu_unordered_map.h"
 
 #include <gtest/gtest.h>
-
 #include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <set>
 #include <string>
@@ -272,49 +272,25 @@ TEST(UnorderedMapTest, StreebogHashDistribution)
 	EXPECT_LE(avg, 2.0);
 }
 
-struct Car
+TEST(UnorderedMapTest, oper)
 {
-	std::string vin;
-	std::string model;
-	double weight;
+	bmstu::unordered_map<int, int> m;
 
-	bool operator==(const Car& other) const
-	{
-		return vin == other.vin && model == other.model &&
-			   weight == other.weight;
-	}
+	m[1] = 100;
+	m[2] = 200;
+	m[3] = 300;
+	m[4] = 400;
+	m[5] = 500;
 
-	std::vector<uint8_t> rawBytes() const
-	{
-		std::string raw = std::to_string(weight) + vin + model;
-		return std::vector<uint8_t>(raw.begin(), raw.end());
-	}
-};
+	auto it = m.end();
 
-TEST(MY, first)
-{
-	bmstu::unordered_map<Car, int> my5;
-	bmstu::unordered_map<int, int> my;
+	--it;
 
-	my[1] = 100;
-	my[2] = 200;
-	my[3] = 300;
+	ASSERT_EQ(it->first, 5);
+	ASSERT_EQ(it->second, 500);
 
-	my[100000] = 1000;
+	auto it1 = it--;
 
-	for (const auto& [k, v] : my)
-	{
-		std::cout << k << " " << v << std::endl;
-	}
-
-	bmstu::unordered_map<char, int> my1;
-
-	my1['A'] = 1;
-	my1['B'] = 2;
-	my1['C'] = 3;
-
-	for (const auto& [k, v] : my1)
-	{
-		std::cout << k << " " << v << std::endl;
-	}
+	ASSERT_EQ(it1->first, 5);
+	ASSERT_EQ(it1->second, 500);
 }

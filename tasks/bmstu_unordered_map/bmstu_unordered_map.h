@@ -116,6 +116,15 @@ struct streebog_hash
 };
 
 template <>
+struct streebog_hash<int>
+{
+	std::size_t operator()(const int& key) const
+	{
+		return static_cast<std::size_t>(key);
+	}
+};
+
+template <>
 struct streebog_hash<std::string>
 {
 	std::size_t operator()(const std::string& key) const noexcept
@@ -188,16 +197,9 @@ class unordered_map
 	}
 
    public:
-	size_type bucket_for1(const K&& key) const
-	{
-		if (buckets_.empty())
-			return 0;
-		return hasher_(key) % buckets_.size();
-	}
-
 	struct iterator
 	{
-		using iterator_category = std::forward_iterator_tag;
+		using iterator_category = std::bidirectional_iterator_tag;
 		using value_type = unordered_map::value_type;
 		using difference_type = std::ptrdiff_t;
 		using pointer = value_type*;
@@ -243,6 +245,62 @@ class unordered_map
 			return tmp;
 		}
 
+		iterator& operator--()
+		{
+			if (!buckets_)
+			{
+				return *this;
+			}
+
+			if (bucket_idx_ >= buckets_->size())
+			{
+				bucket_idx_ = buckets_->size() - 1;
+
+				while (bucket_idx_ < buckets_->size() &&
+					   (*buckets_)[bucket_idx_].empty())
+				{
+					--bucket_idx_;
+				}
+
+				if (bucket_idx_ < buckets_->size() &&
+					!(*buckets_)[bucket_idx_].empty())
+				{
+					list_it_ = (*buckets_)[bucket_idx_].end();
+					--list_it_;
+				}
+				return *this;
+			}
+
+			if (list_it_ == (*buckets_)[bucket_idx_].begin())
+			{
+				while (bucket_idx_ > 0)
+				{
+					--bucket_idx_;
+					if (!(*buckets_)[bucket_idx_].empty())
+					{
+						list_it_ = (*buckets_)[bucket_idx_].end();
+						--list_it_;
+						return *this;
+					}
+				}
+				list_it_ = (*buckets_)[bucket_idx_].begin();
+			}
+
+			else
+			{
+				--list_it_;
+			}
+
+			return *this;
+		}
+
+		iterator operator--(int)
+		{
+			iterator tmp = *this;
+			--(*this);
+			return tmp;
+		}
+
 		bool operator==(const iterator& o) const
 		{
 			bool at_end = !buckets_ || bucket_idx_ >= buckets_->size();
@@ -260,7 +318,7 @@ class unordered_map
 
 	struct const_iterator
 	{
-		using iterator_category = std::forward_iterator_tag;
+		using iterator_category = std::bidirectional_iterator_tag;
 		using value_type = const unordered_map::value_type;
 		using difference_type = std::ptrdiff_t;
 		using pointer = const value_type*;
@@ -310,6 +368,62 @@ class unordered_map
 		{
 			const_iterator tmp = *this;
 			++(*this);
+			return tmp;
+		}
+
+		const_iterator& operator--()
+		{
+			if (!buckets_)
+			{
+				return *this;
+			}
+
+			if (bucket_idx_ >= buckets_->size())
+			{
+				bucket_idx_ = buckets_->size() - 1;
+
+				while (bucket_idx_ < buckets_->size() &&
+					   (*buckets_)[bucket_idx_].empty())
+				{
+					--bucket_idx_;
+				}
+
+				if (bucket_idx_ < buckets_->size() &&
+					!(*buckets_)[bucket_idx_].empty())
+				{
+					list_it_ = (*buckets_)[bucket_idx_].end();
+					--list_it_;
+				}
+				return *this;
+			}
+
+			if (list_it_ == (*buckets_)[bucket_idx_].begin())
+			{
+				while (bucket_idx_ > 0)
+				{
+					--bucket_idx_;
+					if (!(*buckets_)[bucket_idx_].empty())
+					{
+						list_it_ = (*buckets_)[bucket_idx_].end();
+						--list_it_;
+						return *this;
+					}
+				}
+				list_it_ = (*buckets_)[bucket_idx_].begin();
+			}
+
+			else
+			{
+				--list_it_;
+			}
+
+			return *this;
+		}
+
+		const_iterator operator--(int)
+		{
+			iterator tmp = *this;
+			--(*this);
 			return tmp;
 		}
 
@@ -441,9 +555,9 @@ class unordered_map
 			rehash(buckets_.size() * 2);
 		}
 		size_type idx = bucket_for(kv.first);
-		buckets_[idx].push_front(kv);
+		buckets_[idx].push_back(kv);
 		++size_;
-		return {iterator(&buckets_, idx, buckets_[idx].begin()), true};
+		return {iterator(&buckets_, idx, std::prev(buckets_[idx].end())), true};
 	}
 
 	V& operator[](const K& key) { return insert({key, V{}}).first->second; }
